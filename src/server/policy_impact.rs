@@ -1,3 +1,8 @@
+use crate::server::action_modeling::Action;
+use crate::server::individual::Individual;
+use crate::server::action_modeling::PolicyEffect;
+use crate::server::policy_parser::Policy;
+
 #[cfg(test)]
 mod policy_impact_tests {
     use super::*;

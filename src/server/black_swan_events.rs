@@ -1,5 +1,6 @@
 use rand::Rng; // This explicit import is needed for the gen() method
 use crate::server::individual::Individual;
+use crate::server::individual::Trait;
 
 /// Represents the effects a black swan event has on individuals
 #[derive(Debug, Clone)]
@@ -234,6 +235,8 @@ mod events_tests {
                 health: 100.0,
                 happiness: 80.0,
                 wealth: 100.0,
+                community_id: 1,
+                traits: vec![Trait::Industrious],
                 // Other fields...
             },
             Individual {
@@ -241,6 +244,8 @@ mod events_tests {
                 health: 90.0,
                 happiness: 70.0,
                 wealth: 120.0,
+                community_id: 2,
+                traits: vec![Trait::Industrious],
                 // Other fields...
             },
         ];
@@ -329,6 +334,8 @@ mod events_tests {
                 health: 100.0,
                 happiness: 100.0,
                 wealth: 100.0,
+                community_id: 3,
+                traits: vec![Trait::Industrious],
                 // Other fields...
             },
         ];
@@ -398,6 +405,8 @@ mod events_tests {
                 health: 100.0,
                 happiness: 100.0,
                 wealth: 100.0,
+                community_id: 3,
+                traits: vec![Trait::Industrious],
                 // Other fields...
             },
         ];
