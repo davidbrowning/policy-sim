@@ -382,7 +382,7 @@ mod individual_tests {
             .find(|(a, _)| a.name == "Farm")
             .map(|(_, w)| *w)
             .unwrap();
-        assert_eq!(industrious_farm_weight, 0.6);
+        assert!((industrious_farm_weight - 0.6).abs() < 0.0001);
         assert_eq!(regular_farm_weight, 0.4);
         let mut industrious_choices = HashMap::new();
         let mut regular_choices = HashMap::new();

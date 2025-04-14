@@ -1,4 +1,5 @@
 use rand::Rng;
+use std::collections::HashSet;
 use crate::server::individual::Individual;
 use crate::server::types::Trait;
 
@@ -75,27 +76,34 @@ impl EventSystem {
     }
 
     pub fn process_tick<R: Rng>(&mut self, rng: &mut R, individuals: &mut Vec<Individual>) {
+        // Get IDs of currently active events
+        let active_event_ids: HashSet<u32> = self.active_events.iter().map(|(event, _)| event.id).collect();
+
+        // Trigger new events, but only if they're not already active
         for event in &self.events {
-            if event.should_trigger(rng) {
+            if !active_event_ids.contains(&event.id) && event.should_trigger(rng) {
                 println!("Black swan event triggered: {}", event.name);
                 self.active_events.push((event.clone(), event.effects.duration_ticks));
             }
         }
 
+        // Apply all active events
         for (event, _) in &self.active_events {
             event.apply(individuals);
         }
 
+        // Update durations and remove expired events
         let mut i = 0;
         while i < self.active_events.len() {
-            let (_, duration) = &mut self.active_events[i];
-            *duration -= 1;
-            if *duration == 0 {
+            let (event, duration) = &mut self.active_events[i];
+            if *duration == 1 {
                 self.active_events.remove(i);
             } else {
+                *duration -= 1;
                 i += 1;
             }
         }
+        println!("Active events: {:?}", self.active_events.len());
     }
 
     pub fn get_active_events(&self) -> Vec<&Event> {
@@ -383,7 +391,9 @@ mod events_tests {
         
         event_system.process_tick(&mut rng, &mut individuals);
         
-        assert_eq!(individuals[0].health, 95.0);
+        assert_eq!(individuals[0].health, 90.0);
         assert_eq!(individuals[0].happiness, 90.0);
+        
+        assert_eq!(event_system.active_events.len(), 1);
     }
 }

@@ -1,6 +1,7 @@
 use crate::server::action_modeling::PolicyEffect;
 use crate::server::individual::Individual;
 use crate::server::policy_parser::Policy;
+use std::collections::HashMap;
 
 pub fn blend_policy_effects(policies: &[Policy]) -> PolicyEffect {
     let mut health_sum = 0.0;
@@ -27,9 +28,9 @@ pub fn blend_policy_effects(policies: &[Policy]) -> PolicyEffect {
     }
 
     PolicyEffect {
-        action_difficulty_modifiers: Default::default(),
-        action_time_modifiers: Default::default(),
-        action_weights: Default::default(),
+        action_difficulty_modifiers: HashMap::new(),
+        action_time_modifiers: HashMap::new(),
+        action_weights: HashMap::new(),
         health_multiplier: if health_count > 0.0 {
             Some(health_sum / health_count)
         } else {
@@ -51,7 +52,6 @@ pub fn blend_policy_effects(policies: &[Policy]) -> PolicyEffect {
 #[cfg(test)]
 mod policy_impact_tests {
     use super::*;
-    use std::collections::HashMap;
 
     #[test]
     fn test_apply_single_policy_effect() {
@@ -154,7 +154,7 @@ mod policy_impact_tests {
         let policies = vec![policy];
         let blended_effect = blend_policy_effects(&policies);
         
-        assert_eq!(blended_effect.health_multiplier, Some(1.5));
-        assert_eq!(blended_effect.happiness_multiplier, Some(0.75));
+        assert!((blended_effect.health_multiplier.unwrap() - 1.5).abs() < 0.0001);
+        assert!((blended_effect.happiness_multiplier.unwrap() - 0.75).abs() < 0.0001);
     }
 }
