@@ -1,6 +1,6 @@
 use rand::Rng; // This explicit import is needed for the gen() method
 use crate::server::individual::Individual;
-use crate::server::individual::Trait;
+use crate::server::types::Trait;
 
 /// Represents the effects a black swan event has on individuals
 #[derive(Debug, Clone)]
@@ -34,6 +34,10 @@ pub struct Event {
 
 impl Event {
     /// Creates a new event
+    pub fn should_trigger<R: Rng>(&self, rng: &mut R) -> bool {
+        rng.gen::<f64>() < self.probability
+    }
+
     pub fn new(id: u32, name: &str, description: &str, probability: f64, effects: EventEffect) -> Self {
         Event {
             id,
@@ -45,10 +49,10 @@ impl Event {
     }
 
     /// Determines if the event should trigger based on its probability
-    pub fn should_trigger<R: Rng>(&self, rng: &mut R) -> bool {
-        let random_value: f64 = rng.random();
-        random_value < self.probability
-    }
+    //pub fn should_trigger<R: Rng>(&self, rng: &mut R) -> bool {
+    //    let random_value: f64 = rng.random();
+    //    random_value < self.probability
+    //}
 
     /// Applies the event effects to all individuals
     pub fn apply(&self, individuals: &mut Vec<Individual>) {

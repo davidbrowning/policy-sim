@@ -1,9 +1,10 @@
-use std::collections::HashMap;
 use serde_yaml::Value;
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Debug, Clone)]
 pub struct Policy {
+    pub id: u32,
     pub name: String,
     pub community: String,
     pub effects: HashMap<String, f64>,
@@ -22,41 +23,34 @@ pub struct PartialPolicy {
 pub enum PolicyError {
     #[error("YAML parsing error: {0}")]
     YamlError(#[from] serde_yaml::Error),
-    
     #[error("Missing required field: {0}")]
     MissingField(String),
-    
     #[error("Invalid value for field: {0}")]
     InvalidValue(String),
 }
 
-/// Parse a YAML string into a Policy struct
 pub fn parse_policy(yaml: &str) -> Result<Policy, PolicyError> {
     let value: Value = serde_yaml::from_str(yaml)?;
-    
-    // Extract required fields
     let name = extract_string_field(&value, "name")?;
     let community = extract_string_field(&value, "community")?;
-    
-    // Extract effects
-    let effects_value = value.get("effects")
+    let effects_value = value
+        .get("effects")
         .ok_or_else(|| PolicyError::MissingField("effects".to_string()))?;
-    
     let effects = extract_effects_map(effects_value)?;
-    
-    // Extract adoption rate
-    let adoption_rate = value.get("adoption_rate")
+    let adoption_rate = value
+        .get("adoption_rate")
         .ok_or_else(|| PolicyError::MissingField("adoption_rate".to_string()))?
         .as_f64()
         .ok_or_else(|| PolicyError::InvalidValue("adoption_rate must be a number".to_string()))?;
-    
     Ok(Policy {
+        id: 0, // Default ID, can be set externally
         name,
         community,
         effects,
         adoption_rate,
     })
 }
+
 
 /// Parse a YAML string into a Policy template
 pub fn parse_policy_template(yaml: &str) -> Result<Policy, PolicyError> {
