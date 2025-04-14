@@ -1,3 +1,111 @@
+use rand::Rng;
+use std::collections::HashMap;
+use crate::server::action_modeling::Action;
+use crate::server::action_modeling::PolicyEffect;
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Trait {
+    Industrious,
+    // Add other traits as needed
+}
+
+#[derive(Debug, Clone)]
+pub struct Geography {
+    pub name: String,
+    pub health_multiplier: f64,
+    pub happiness_multiplier: f64,
+    pub wealth_multiplier: f64,
+}
+
+#[derive(Debug)]
+pub struct Individual {
+    pub id: u64,
+    pub health: f64,
+    pub happiness: f64,
+    pub wealth: f64,
+    pub community_id: u64,
+    pub traits: Vec<Trait>,
+    // Other fields would be added here
+}
+
+impl Individual {
+    pub fn new(id: u64, community_id: u64) -> Self {
+        Self {
+            id,
+            health: 100.0,
+            happiness: 80.0,
+            wealth: 50.0,
+            community_id,
+            traits: Vec::new(),
+            // Initialize other fields
+        }
+    }
+
+    pub fn choose_action<R: Rng>(&self, priorities: &[(Action, f64)], rng: &mut R) -> Option<Action> {
+        if priorities.is_empty() {
+            return None;
+        }
+
+        // Calculate total weight
+        let total_weight: f64 = priorities.iter().map(|(_, weight)| weight).sum();
+        
+        if total_weight <= 0.0 {
+            return None;
+        }
+
+        // Generate random value between 0 and total weight
+        let random_value = rng.random::<f64>() * total_weight;
+        
+        // Find the action based on weighted probability
+        let mut cumulative_weight = 0.0;
+        for (action, weight) in priorities {
+            cumulative_weight += weight;
+            if random_value <= cumulative_weight {
+                return Some(*action);
+            }
+        }
+
+        // Fallback to the last action (should rarely happen due to floating point precision)
+        priorities.last().map(|(action, _)| *action)
+    }
+
+    pub fn apply_policy_to_priorities(&self, base_priorities: &[(Action, f64)], policy_effect: &PolicyEffect) -> Vec<(Action, f64)> {
+        base_priorities
+            .iter()
+            .map(|(action, base_weight)| {
+                let multiplier = policy_effect.action_weights.get(action).copied().unwrap_or(1.0);
+                (*action, base_weight * multiplier)
+            })
+            .collect()
+    }
+
+    pub fn apply_environment_multipliers(&mut self, geography: &Geography) {
+        self.health *= geography.health_multiplier;
+        self.happiness *= geography.happiness_multiplier;
+        self.wealth *= geography.wealth_multiplier;
+    }
+
+    pub fn apply_trait_effects(&self, base_priorities: &[(Action, f64)]) -> Vec<(Action, f64)> {
+        let mut modified_priorities = base_priorities.to_vec();
+
+        for trait_value in &self.traits {
+            match trait_value {
+                Trait::Industrious => {
+                    // Increase farm weight for industrious individuals
+                    if let Some(index) = modified_priorities.iter().position(|(action, _)| *action == Action::Farm) {
+                        let (action, weight) = modified_priorities[index];
+                        modified_priorities[index] = (action, weight * 1.5); // Increase farming weight by 50%
+                    }
+                }
+                // Handle other traits
+            }
+        }
+
+        modified_priorities
+    }
+}
+
 #[cfg(test)]
 mod individual_tests {
     use super::*;
