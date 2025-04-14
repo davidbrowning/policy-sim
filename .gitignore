@@ -3,3 +3,8 @@
 grafana*
 sqlite-tools*
 learn-rust*
+
+
+# Added by cargo
+
+/target
