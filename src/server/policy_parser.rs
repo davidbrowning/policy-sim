@@ -43,7 +43,7 @@ pub fn parse_policy(yaml: &str) -> Result<Policy, PolicyError> {
         .as_f64()
         .ok_or_else(|| PolicyError::InvalidValue("adoption_rate must be a number".to_string()))?;
     Ok(Policy {
-        id: 0, // Default ID, can be set externally
+        id: 0,
         name,
         community,
         effects,
@@ -51,21 +51,14 @@ pub fn parse_policy(yaml: &str) -> Result<Policy, PolicyError> {
     })
 }
 
-
-/// Parse a YAML string into a Policy template
 pub fn parse_policy_template(yaml: &str) -> Result<Policy, PolicyError> {
     parse_policy(yaml)
 }
 
-/// Parse a YAML string into a PartialPolicy struct
 pub fn parse_partial_policy(yaml: &str) -> Result<PartialPolicy, PolicyError> {
     let value: Value = serde_yaml::from_str(yaml)?;
-    
-    // Extract optional fields
     let name = value.get("name").and_then(|v| v.as_str()).map(String::from);
     let community = value.get("community").and_then(|v| v.as_str()).map(String::from);
-    
-    // Extract effects if present
     let effects = if let Some(effects_value) = value.get("effects") {
         if let Some(mapping) = effects_value.as_mapping() {
             let mut effects_map = HashMap::new();
@@ -81,10 +74,7 @@ pub fn parse_partial_policy(yaml: &str) -> Result<PartialPolicy, PolicyError> {
     } else {
         None
     };
-    
-    // Extract adoption rate if present
     let adoption_rate = value.get("adoption_rate").and_then(|v| v.as_f64());
-    
     Ok(PartialPolicy {
         name,
         community,
@@ -93,22 +83,15 @@ pub fn parse_partial_policy(yaml: &str) -> Result<PartialPolicy, PolicyError> {
     })
 }
 
-/// Apply a template policy to a partial policy to fill in missing fields
 pub fn apply_template(partial: PartialPolicy, template: &Policy) -> Result<Policy, PolicyError> {
     let name = partial.name.unwrap_or_else(|| template.name.clone());
     let community = partial.community.unwrap_or_else(|| template.community.clone());
-    
-    // Start with template effects
     let mut effects = template.effects.clone();
-    
-    // Override with partial policy effects if present
     if let Some(partial_effects) = partial.effects {
         for (key, value) in partial_effects {
             if let Some(val) = value.as_f64() {
                 effects.insert(key, val);
             } else if let Some(mapping) = value.as_mapping() {
-                // Handle nested mappings by extracting their numeric values
-                // This is a simplified approach that works for the tests
                 for (nested_key, nested_value) in mapping {
                     if let (Some(k_str), Some(v_f64)) = (nested_key.as_str(), nested_value.as_f64()) {
                         let combined_key = format!("{}.{}", key, k_str);
@@ -118,10 +101,9 @@ pub fn apply_template(partial: PartialPolicy, template: &Policy) -> Result<Polic
             }
         }
     }
-    
     let adoption_rate = partial.adoption_rate.unwrap_or(template.adoption_rate);
-    
     Ok(Policy {
+        id: template.id,
         name,
         community,
         effects,
@@ -129,16 +111,12 @@ pub fn apply_template(partial: PartialPolicy, template: &Policy) -> Result<Polic
     })
 }
 
-/// Validate a policy to ensure all values are within acceptable ranges
 pub fn validate_policy(policy: Policy) -> Result<Policy, PolicyError> {
-    // Check adoption rate is between 0 and 1
     if policy.adoption_rate < 0.0 || policy.adoption_rate > 1.0 {
         return Err(PolicyError::InvalidValue(
             "adoption_rate must be between 0.0 and 1.0".to_string()
         ));
     }
-    
-    // Check all multipliers are positive
     for (key, value) in &policy.effects {
         if key.contains("multiplier") && *value < 0.0 {
             return Err(PolicyError::InvalidValue(
@@ -146,11 +124,9 @@ pub fn validate_policy(policy: Policy) -> Result<Policy, PolicyError> {
             ));
         }
     }
-    
     Ok(policy)
 }
 
-// Helper function to extract a string field from a YAML Value
 fn extract_string_field(value: &Value, field_name: &str) -> Result<String, PolicyError> {
     value.get(field_name)
         .ok_or_else(|| PolicyError::MissingField(field_name.to_string()))?
@@ -159,30 +135,24 @@ fn extract_string_field(value: &Value, field_name: &str) -> Result<String, Polic
         .map(String::from)
 }
 
-// Helper function to extract effects map from a YAML Value
 fn extract_effects_map(effects_value: &Value) -> Result<HashMap<String, f64>, PolicyError> {
     if let Some(mapping) = effects_value.as_mapping() {
         let mut effects_map = HashMap::new();
-        
-        // Process direct key-value pairs
         for (key, value) in mapping {
             if let Some(key_str) = key.as_str() {
                 if let Some(val) = value.as_f64() {
                     effects_map.insert(key_str.to_string(), val);
                 } else if let Some(nested_mapping) = value.as_mapping() {
-                    // Process nested mappings (like resource_modifiers, action_weights)
                     process_nested_mapping(&mut effects_map, key_str, nested_mapping);
                 }
             }
         }
-        
         Ok(effects_map)
     } else {
         Err(PolicyError::InvalidValue("effects must be a mapping".to_string()))
     }
 }
 
-// Helper function to process nested mappings in effects
 fn process_nested_mapping(effects_map: &mut HashMap<String, f64>, prefix: &str, mapping: &serde_yaml::Mapping) {
     for (nested_key, nested_value) in mapping {
         if let (Some(key_str), Some(val)) = (nested_key.as_str(), nested_value.as_f64()) {
@@ -205,9 +175,7 @@ mod policy_parser_tests {
               happiness_multiplier: 1.05
             adoption_rate: 0.75
         "#;
-
         let policy = parse_policy(yaml).unwrap();
-        
         assert_eq!(policy.name, "Green Energy Initiative");
         assert_eq!(policy.community, "nation");
         assert_eq!(policy.effects.get("health_multiplier").unwrap(), &1.1);
@@ -224,33 +192,27 @@ mod policy_parser_tests {
               this isn't valid YAML
             adoption_rate: 0.5
         "#;
-
         let result = parse_policy(invalid_yaml);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_parse_missing_required_fields() {
-        // Missing community field
         let missing_community = r#"
             name: "Incomplete Policy"
             effects:
               health_multiplier: 1.2
             adoption_rate: 0.6
         "#;
-
         let result = parse_policy(missing_community);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("community"));
-        
-        // Missing name field
         let missing_name = r#"
             community: "nation"
             effects:
               health_multiplier: 1.2
             adoption_rate: 0.6
         "#;
-
         let result = parse_policy(missing_name);
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("name"));
@@ -272,20 +234,13 @@ mod policy_parser_tests {
               population_growth: 1.05
             adoption_rate: 0.65
         "#;
-
         let policy = parse_policy(complex_yaml).unwrap();
-        
         assert_eq!(policy.name, "Complex Policy");
-        
-        let resource_modifiers = policy.effects.get("resource_modifiers").unwrap()
-            .as_mapping().unwrap();
-        assert_eq!(resource_modifiers.get("food").unwrap().as_f64().unwrap(), 1.2);
-        assert_eq!(resource_modifiers.get("water").unwrap().as_f64().unwrap(), 0.9);
-        
-        let action_weights = policy.effects.get("action_weights").unwrap()
-            .as_mapping().unwrap();
-        assert_eq!(action_weights.get("farm").unwrap().as_f64().unwrap(), 1.5);
-        assert_eq!(action_weights.get("hunt").unwrap().as_f64().unwrap(), 0.8);
+        assert_eq!(policy.effects.get("resource_modifiers.food").unwrap(), &1.2);
+        assert_eq!(policy.effects.get("resource_modifiers.water").unwrap(), &0.9);
+        assert_eq!(policy.effects.get("action_weights.farm").unwrap(), &1.5);
+        assert_eq!(policy.effects.get("action_weights.hunt").unwrap(), &0.8);
+        assert_eq!(policy.effects.get("population_growth").unwrap(), &1.05);
     }
 
     #[test]
@@ -299,31 +254,24 @@ mod policy_parser_tests {
               wealth_multiplier: 1.0
             adoption_rate: 0.5
         "#;
-
         let template_policy = parse_policy_template(template).unwrap();
-        
-        // Policy with missing fields that should inherit from template
         let partial_yaml = r#"
             name: "Partial Policy"
             community: "city"
             effects:
               health_multiplier: 1.2
-            # Missing adoption_rate
         "#;
-
         let policy = apply_template(parse_partial_policy(partial_yaml).unwrap(), &template_policy).unwrap();
-        
         assert_eq!(policy.name, "Partial Policy");
         assert_eq!(policy.community, "city");
         assert_eq!(policy.effects.get("health_multiplier").unwrap(), &1.2);
-        assert_eq!(policy.effects.get("happiness_multiplier").unwrap(), &1.0); // From template
-        assert_eq!(policy.effects.get("wealth_multiplier").unwrap(), &1.0);    // From template
-        assert_eq!(policy.adoption_rate, 0.5);                                // From template
+        assert_eq!(policy.effects.get("happiness_multiplier").unwrap(), &1.0);
+        assert_eq!(policy.effects.get("wealth_multiplier").unwrap(), &1.0);
+        assert_eq!(policy.adoption_rate, 0.5);
     }
 
     #[test]
     fn test_policy_validation_logic() {
-        // Test policy with invalid adoption rate (>1.0)
         let invalid_adoption_rate = r#"
             name: "Invalid Policy"
             community: "nation"
@@ -331,12 +279,9 @@ mod policy_parser_tests {
               health_multiplier: 1.1
             adoption_rate: 1.5
         "#;
-
         let result = validate_policy(parse_policy(invalid_adoption_rate).unwrap());
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("adoption_rate"));
-        
-        // Test policy with negative multipliers
         let negative_multipliers = r#"
             name: "Negative Policy"
             community: "nation"
@@ -344,7 +289,6 @@ mod policy_parser_tests {
               health_multiplier: -0.5
             adoption_rate: 0.5
         "#;
-
         let result = validate_policy(parse_policy(negative_multipliers).unwrap());
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("multiplier"));

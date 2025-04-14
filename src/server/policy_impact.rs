@@ -3,7 +3,6 @@ use crate::server::individual::Individual;
 use crate::server::policy_parser::Policy;
 
 pub fn blend_policy_effects(policies: &[Policy]) -> PolicyEffect {
-    let mut total_adoption = 0.0;
     let mut health_sum = 0.0;
     let mut happiness_sum = 0.0;
     let mut wealth_sum = 0.0;
@@ -13,7 +12,6 @@ pub fn blend_policy_effects(policies: &[Policy]) -> PolicyEffect {
 
     for policy in policies {
         let adoption = policy.adoption_rate;
-        total_adoption += adoption;
         if let Some(health) = policy.effects.get("health_multiplier") {
             health_sum += health * adoption;
             health_count += adoption;
@@ -72,7 +70,9 @@ mod policy_impact_tests {
             health_multiplier: Some(1.2),
             happiness_multiplier: Some(0.9),
             wealth_multiplier: None,
-            ..Default::default()
+            action_difficulty_modifiers: HashMap::new(),
+            action_time_modifiers: HashMap::new(),
+            action_weights: HashMap::new(),
         };
         
         individual.apply_policy_effect(&policy_effect);

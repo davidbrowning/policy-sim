@@ -19,8 +19,8 @@ pub struct Individual {
     pub wealth: f64,
     pub community_id: u64,
     pub traits: Vec<Trait>,
-    pub age: i32, // Added for metrics_system.rs
-    pub children: i32, // Added for metrics_system.rs
+    pub age: i32,
+    pub children: i32,
 }
 
 impl Individual {
@@ -34,18 +34,6 @@ impl Individual {
             traits: Vec::new(),
             age: 20,
             children: 0,
-        }
-    }
-
-    pub fn apply_policy_effect(&mut self, policy_effect: &PolicyEffect) {
-        if let Some(multiplier) = policy_effect.health_multiplier {
-            self.health *= multiplier;
-        }
-        if let Some(multiplier) = policy_effect.happiness_multiplier {
-            self.happiness *= multiplier;
-        }
-        if let Some(multiplier) = policy_effect.wealth_multiplier {
-            self.wealth *= multiplier;
         }
     }
 
@@ -97,6 +85,18 @@ impl Individual {
             }
         }
         modified_priorities
+    }
+
+    pub fn apply_policy_effect(&mut self, policy_effect: &PolicyEffect) {
+        if let Some(multiplier) = policy_effect.health_multiplier {
+            self.health *= multiplier;
+        }
+        if let Some(multiplier) = policy_effect.happiness_multiplier {
+            self.happiness *= multiplier;
+        }
+        if let Some(multiplier) = policy_effect.wealth_multiplier {
+            self.wealth *= multiplier;
+        }
     }
 }
 
@@ -151,9 +151,9 @@ mod individual_tests {
             let action = individual.choose_action(&priorities, &mut rng).unwrap();
             *action_counts.entry(action.name.clone()).or_insert(0) += 1;
         }
-        let farm_pct = action_counts.get("Farm").unwrap_or(&0) as f64 / iterations as f64;
-        let hunt_pct = action_counts.get("Hunt").unwrap_or(&0) as f64 / iterations as f64;
-        let trade_pct = action_counts.get("Trade").unwrap_or(&0) as f64 / iterations as f64;
+        let farm_pct = *action_counts.get("Farm").unwrap_or(&0) as f64 / iterations as f64;
+        let hunt_pct = *action_counts.get("Hunt").unwrap_or(&0) as f64 / iterations as f64;
+        let trade_pct = *action_counts.get("Trade").unwrap_or(&0) as f64 / iterations as f64;
         assert!((farm_pct - 0.6).abs() < 0.05, "Farm: {}", farm_pct);
         assert!((hunt_pct - 0.3).abs() < 0.05, "Hunt: {}", hunt_pct);
         assert!((trade_pct - 0.1).abs() < 0.05, "Trade: {}", trade_pct);
@@ -189,7 +189,11 @@ mod individual_tests {
         ];
         let policy_effect = PolicyEffect {
             action_weights: vec![("Farm".to_string(), 2.0)].into_iter().collect(),
-            ..Default::default()
+            action_difficulty_modifiers: HashMap::new(),
+            action_time_modifiers: HashMap::new(),
+            health_multiplier: None,
+            happiness_multiplier: None,
+            wealth_multiplier: None,
         };
         let modified_priorities = individual.apply_policy_to_priorities(&base_priorities, &policy_effect);
         let farm_weight = modified_priorities
@@ -210,8 +214,8 @@ mod individual_tests {
             let action = individual.choose_action(&modified_priorities, &mut rng).unwrap();
             *action_counts.entry(action.name.clone()).or_insert(0) += 1;
         }
-        let farm_pct = action_counts.get("Farm").unwrap_or(&0) as f64 / iterations as f64;
-        let hunt_pct = action_counts.get("Hunt").unwrap_or(&0) as f64 / iterations as f64;
+        let farm_pct = *action_counts.get("Farm").unwrap_or(&0) as f64 / iterations as f64;
+        let hunt_pct = *action_counts.get("Hunt").unwrap_or(&0) as f64 / iterations as f64;
         assert!((farm_pct - 0.67).abs() < 0.05, "Farm: {}", farm_pct);
         assert!((hunt_pct - 0.33).abs() < 0.05, "Hunt: {}", hunt_pct);
     }
@@ -378,7 +382,7 @@ mod individual_tests {
             .find(|(a, _)| a.name == "Farm")
             .map(|(_, w)| *w)
             .unwrap();
-        assert_eq!(industrious_farm_weight, 0.6); // 0.4 * 1.5
+        assert_eq!(industrious_farm_weight, 0.6);
         assert_eq!(regular_farm_weight, 0.4);
         let mut industrious_choices = HashMap::new();
         let mut regular_choices = HashMap::new();
@@ -393,8 +397,8 @@ mod individual_tests {
             *industrious_choices.entry(i_action.name.clone()).or_insert(0) += 1;
             *regular_choices.entry(r_action.name.clone()).or_insert(0) += 1;
         }
-        let i_farm_pct = industrious_choices.get("Farm").unwrap_or(&0) as f64 / iterations as f64;
-        let r_farm_pct = regular_choices.get("Farm").unwrap_or(&0) as f64 / iterations as f64;
+        let i_farm_pct = *industrious_choices.get("Farm").unwrap_or(&0) as f64 / iterations as f64;
+        let r_farm_pct = *regular_choices.get("Farm").unwrap_or(&0) as f64 / iterations as f64;
         assert!(i_farm_pct > r_farm_pct, "Industrious: {}, Regular: {}", i_farm_pct, r_farm_pct);
     }
 }

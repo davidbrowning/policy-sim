@@ -32,8 +32,6 @@ impl Action {
     }
 }
 
-// Tests remain the same
-
 #[cfg(test)]
 mod actions_tests {
     use super::*;
@@ -67,14 +65,18 @@ mod actions_tests {
                 ("Farm".to_string(), 0.9),
                 ("Hunt".to_string(), 1.1),
             ].into_iter().collect(),
+            action_weights: HashMap::new(),
+            health_multiplier: None,
+            happiness_multiplier: None,
+            wealth_multiplier: None,
         };
         
         farm_action.apply_policy_effect(&policy_effect);
         hunt_action.apply_policy_effect(&policy_effect);
         
-        assert_eq!(farm_action.difficulty, 1.6); // 2.0 * 0.8
-        assert_eq!(hunt_action.difficulty, 4.8); // 4.0 * 1.2
-        assert_eq!(farm_action.base_time, 4);    // 5 * 0.9 = 4.5, floored to 4
-        assert_eq!(hunt_action.base_time, 3);    // 3 * 1.1 = 3.3, floored to 3
+        assert_eq!(farm_action.difficulty, 1.6);
+        assert_eq!(hunt_action.difficulty, 4.8);
+        assert_eq!(farm_action.base_time, 4);
+        assert_eq!(hunt_action.base_time, 3);
     }
 }
